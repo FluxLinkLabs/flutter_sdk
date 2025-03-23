@@ -37,6 +37,26 @@ class FluxLinkApiService {
   /// Get the API key used for authentication
   String get apiKey => _apiKey;
 
+  /// Parses API response data into a FluxLinkData object
+  FluxLinkData _parseApiResponse(Map<String, dynamic> data) {
+    return FluxLinkData(
+      id: data['_id'] as String,
+      url: data['defaultUrl'] as String, // Use the defaultUrl as the main URL
+      title: data['title'] as String?,
+      description: null, // Description isn't present in the sample
+      metadata: {
+        'shortCode': data['shortCode'],
+        'analytics': data['analytics'],
+        'createdAt': data['createdAt'],
+        'customDomain': data['customDomain'],
+        'tags': data['tags'],
+      },
+      androidUrl: data['androidLink'] != null ? data['androidLink']['url'] as String? : null,
+      iosUrl: null, // Not present in the sample
+      webUrl: data['desktopUrl'] as String?,
+    );
+  }
+
   /// Resolves a FluxLink shortcode and returns the associated data
   Future<FluxLinkData> resolveShortCode(String shortCode) async {
     try {
@@ -51,24 +71,7 @@ class FluxLinkApiService {
         // Check if the response follows the expected structure with success and data fields
         if (responseBody['success'] == true && responseBody['data'] != null) {
           final data = responseBody['data'] as Map<String, dynamic>;
-
-          // Extract the relevant fields from the API response
-          return FluxLinkData(
-            id: data['_id'] as String,
-            url: data['defaultUrl'] as String, // Use the defaultUrl as the main URL
-            title: data['title'] as String?,
-            description: null, // Description isn't present in the sample
-            metadata: {
-              'shortCode': data['shortCode'],
-              'analytics': data['analytics'],
-              'createdAt': data['createdAt'],
-              'customDomain': data['customDomain'],
-              'tags': data['tags'],
-            },
-            androidUrl: data['androidLink'] != null ? data['androidLink']['url'] as String? : null,
-            iosUrl: null, // Not present in the sample
-            webUrl: data['desktopUrl'] as String?,
-          );
+          return _parseApiResponse(data);
         } else {
           throw FluxLinkApiException(
             'Invalid response format for shortCode: $shortCode',
