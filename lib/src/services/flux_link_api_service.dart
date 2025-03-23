@@ -19,15 +19,15 @@ class FluxLinkApiException implements Exception {
 /// Client class to handle FluxLink API communication using shortcodes
 class FluxLinkApiClient {
   final String _baseUrl;
-  final String _clientToken;
+  final String _apiKey;
   final http.Client _httpClient;
 
-  /// Creates a new FluxLinkApiClient with the provided base URL and client token
+  /// Creates a new FluxLinkApiClient with the provided base URL and API key
   FluxLinkApiClient({
-    required String clientToken,
+    required String apiKey,
     String baseUrl = 'https://api.fluxlink.com/v1',
     http.Client? httpClient,
-  }) : _clientToken = clientToken,
+  }) : _apiKey = apiKey,
        _baseUrl = baseUrl,
        _httpClient = httpClient ?? http.Client();
 
@@ -36,7 +36,7 @@ class FluxLinkApiClient {
     try {
       final response = await _httpClient.get(
         Uri.parse('$_baseUrl/links/resolve/$shortCode'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_clientToken'},
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_apiKey'},
       );
 
       if (response.statusCode == 200) {

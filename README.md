@@ -41,10 +41,8 @@ import 'package:fluxlink_sdk/fluxlink_sdk.dart';
 
 void main() async {
   // Initialize the SDK with your API key
-  // If you need shortcode resolution, also provide a clientToken
   final fluxLink = await FluxLink.initialize(
     apiKey: 'your-api-key',
-    clientToken: 'your-client-token', // Optional: for shortcode resolution
     // Optional: custom API URL
     // baseUrl: 'https://your-custom-api.com/v1',
   );
@@ -124,7 +122,6 @@ Future<void> handleManualLink(String url) async {
 ```dart
 Future<void> resolveShortCode(String shortCode) async {
   try {
-    // Note: You must initialize FluxLink with a clientToken to use this
     final data = await fluxLink.resolveShortCode(shortCode);
     print('Resolved shortcode to URL: ${data.url}');
     // Process the link data

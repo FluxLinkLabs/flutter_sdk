@@ -22,24 +22,20 @@ class FluxLink {
   /// handling dynamic links.
   static Future<FluxLink> initialize({
     required String apiKey,
-    String? clientToken,
     String baseUrl = 'https://api.fluxlink.com/v1',
   }) async {
-    final instance = FluxLink._(apiKey: apiKey, clientToken: clientToken, baseUrl: baseUrl);
+    final instance = FluxLink._(apiKey: apiKey, baseUrl: baseUrl);
     await instance._initialize();
     return instance;
   }
 
-  FluxLink._({required String apiKey, String? clientToken, required String baseUrl})
+  FluxLink._({required String apiKey, required String baseUrl})
     : _apiService = FluxLinkApiService(apiKey: apiKey, baseUrl: baseUrl),
-      _apiClient =
-          clientToken != null
-              ? FluxLinkApiClient(clientToken: clientToken, baseUrl: baseUrl)
-              : null,
+      _apiClient = FluxLinkApiClient(apiKey: apiKey, baseUrl: baseUrl),
       _detector = null;
 
   final FluxLinkApiService _apiService;
-  final FluxLinkApiClient? _apiClient;
+  final FluxLinkApiClient _apiClient;
   FluxLinkDetector? _detector;
 
   Future<void> _initialize() async {
@@ -68,13 +64,6 @@ class FluxLink {
   /// This makes a GET request to `/links/resolve/{shortCode}` and returns
   /// the resolved link data.
   Future<FluxLinkData> resolveShortCode(String shortCode) {
-    if (_apiClient == null) {
-      throw StateError(
-        'FluxLink was initialized without a clientToken. '
-        'Please provide a clientToken when calling FluxLink.initialize() '
-        'to use shortcode resolution.',
-      );
-    }
     return _apiClient.resolveLink(shortCode);
   }
 
@@ -106,6 +95,6 @@ class FluxLink {
   void dispose() {
     _detector?.dispose();
     _apiService.dispose();
-    _apiClient?.dispose();
+    _apiClient.dispose();
   }
 }
