@@ -22,7 +22,7 @@ class FluxLink {
   /// handling dynamic links.
   static Future<FluxLink> initialize({
     required String apiKey,
-    String baseUrl = 'https://api.fluxlink.com',
+    String baseUrl = 'https://api.fluxlink.app/api',
   }) async {
     final instance = FluxLink._(apiKey: apiKey, baseUrl: baseUrl);
     await instance._initialize();
@@ -31,11 +31,9 @@ class FluxLink {
 
   FluxLink._({required String apiKey, required String baseUrl})
     : _apiService = FluxLinkApiService(apiKey: apiKey, baseUrl: baseUrl),
-      _apiClient = FluxLinkApiClient(apiKey: apiKey, baseUrl: baseUrl),
       _detector = null;
 
   final FluxLinkApiService _apiService;
-  final FluxLinkApiClient _apiClient;
   FluxLinkDetector? _detector;
 
   Future<void> _initialize() async {
@@ -59,12 +57,28 @@ class FluxLink {
     return _detector!.handleLink(url);
   }
 
+  /// Resolves a FluxLink URL and returns the appropriate URL for the current platform.
+  ///
+  /// This is a convenience method that resolves the link and returns the platform-specific URL.
+  Future<String> handleLinkForCurrentPlatform(String url) async {
+    final linkData = await handleLink(url);
+    return linkData.getPlatformUrl();
+  }
+
   /// Resolves a FluxLink shortcode and returns the associated data.
   ///
   /// This makes a GET request to `/links/resolve/{shortCode}` and returns
   /// the resolved link data.
-  Future<FluxLinkData> resolveShortCode(String shortCode) {
-    return _apiClient.resolveLink(shortCode);
+  Future<FluxLinkData> resolve(String shortCode) {
+    return _apiService.resolveShortCode(shortCode);
+  }
+
+  /// Resolves a FluxLink shortcode and returns the appropriate URL for the current platform.
+  ///
+  /// This is a convenience method that resolves the shortcode and returns the platform-specific URL.
+  Future<String> resolveForCurrentPlatform(String shortCode) async {
+    final linkData = await resolve(shortCode);
+    return linkData.getPlatformUrl();
   }
 
   /// Create a new FluxLink.
@@ -95,6 +109,5 @@ class FluxLink {
   void dispose() {
     _detector?.dispose();
     _apiService.dispose();
-    _apiClient.dispose();
   }
 }

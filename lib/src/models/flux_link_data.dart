@@ -1,3 +1,7 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 /// Model class representing resolved FluxLink data.
 class FluxLinkData {
   /// Unique identifier for the link
@@ -35,6 +39,24 @@ class FluxLinkData {
     this.iosUrl,
     this.webUrl,
   });
+
+  /// Gets the appropriate URL for the current platform
+  ///
+  /// Returns the platform-specific URL if available, otherwise falls back to the default URL
+  String getPlatformUrl() {
+    if (kIsWeb && webUrl != null) {
+      return webUrl!;
+    } else if (!kIsWeb) {
+      if (Platform.isAndroid && androidUrl != null) {
+        return androidUrl!;
+      } else if (Platform.isIOS && iosUrl != null) {
+        return iosUrl!;
+      }
+    }
+
+    // Default fallback URL
+    return url;
+  }
 
   /// Creates a FluxLinkData instance from a JSON map
   factory FluxLinkData.fromJson(Map<String, dynamic> json) {

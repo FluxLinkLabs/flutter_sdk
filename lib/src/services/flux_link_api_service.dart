@@ -16,50 +16,6 @@ class FluxLinkApiException implements Exception {
       'FluxLinkApiException: $message ${statusCode != null ? '(Status code: $statusCode)' : ''}';
 }
 
-/// Client class to handle FluxLink API communication using shortcodes
-class FluxLinkApiClient {
-  final String _baseUrl;
-  final String _apiKey;
-  final http.Client _httpClient;
-
-  /// Creates a new FluxLinkApiClient with the provided base URL and API key
-  FluxLinkApiClient({
-    required String apiKey,
-    String baseUrl = 'https://api.fluxlink.com/v1',
-    http.Client? httpClient,
-  }) : _apiKey = apiKey,
-       _baseUrl = baseUrl,
-       _httpClient = httpClient ?? http.Client();
-
-  /// Resolves a FluxLink shortcode and returns the associated data
-  Future<FluxLinkData> resolveLink(String shortCode) async {
-    try {
-      final response = await _httpClient.get(
-        Uri.parse('$_baseUrl/links/resolve/$shortCode'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_apiKey'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return FluxLinkData.fromJson(data);
-      } else {
-        throw FluxLinkApiException(
-          'Failed to resolve link with shortCode: $shortCode',
-          statusCode: response.statusCode,
-        );
-      }
-    } catch (e) {
-      if (e is FluxLinkApiException) rethrow;
-      throw FluxLinkApiException('Error resolving link with shortCode: $e');
-    }
-  }
-
-  /// Disposes the HTTP client when no longer needed
-  void dispose() {
-    _httpClient.close();
-  }
-}
-
 /// Service class to handle FluxLink API communication
 class FluxLinkApiService {
   final String _baseUrl;
@@ -69,30 +25,65 @@ class FluxLinkApiService {
   /// Creates a new FluxLinkApiService with the provided API key and base URL
   FluxLinkApiService({
     required String apiKey,
-    String baseUrl = 'https://api.fluxlink.com/v1',
+    String baseUrl = 'https://api.fluxlink.app/api',
     http.Client? httpClient,
   }) : _apiKey = apiKey,
        _baseUrl = baseUrl,
        _httpClient = httpClient ?? http.Client();
 
-  /// Resolves a FluxLink URL and returns the associated data
-  Future<FluxLinkData> resolveLink(String url) async {
+  /// Get the base URL of the API
+  String get baseUrl => _baseUrl;
+
+  /// Get the API key used for authentication
+  String get apiKey => _apiKey;
+
+  /// Resolves a FluxLink shortcode and returns the associated data
+  Future<FluxLinkData> resolveShortCode(String shortCode) async {
     try {
-      final response = await _httpClient.post(
-        Uri.parse('$_baseUrl/resolve'),
+      final response = await _httpClient.get(
+        Uri.parse('$_baseUrl/links/resolve/$shortCode'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_apiKey'},
-        body: jsonEncode({'url': url}),
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return FluxLinkData.fromJson(data);
+        final responseBody = jsonDecode(response.body);
+
+        // Check if the response follows the expected structure with success and data fields
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          final data = responseBody['data'] as Map<String, dynamic>;
+
+          // Extract the relevant fields from the API response
+          return FluxLinkData(
+            id: data['_id'] as String,
+            url: data['defaultUrl'] as String, // Use the defaultUrl as the main URL
+            title: data['title'] as String?,
+            description: null, // Description isn't present in the sample
+            metadata: {
+              'shortCode': data['shortCode'],
+              'analytics': data['analytics'],
+              'createdAt': data['createdAt'],
+              'customDomain': data['customDomain'],
+              'tags': data['tags'],
+            },
+            androidUrl: data['androidLink'] != null ? data['androidLink']['url'] as String? : null,
+            iosUrl: null, // Not present in the sample
+            webUrl: data['desktopUrl'] as String?,
+          );
+        } else {
+          throw FluxLinkApiException(
+            'Invalid response format for shortCode: $shortCode',
+            statusCode: response.statusCode,
+          );
+        }
       } else {
-        throw FluxLinkApiException('Failed to resolve link', statusCode: response.statusCode);
+        throw FluxLinkApiException(
+          'Failed to resolve link with shortCode: $shortCode',
+          statusCode: response.statusCode,
+        );
       }
     } catch (e) {
       if (e is FluxLinkApiException) rethrow;
-      throw FluxLinkApiException('Error resolving link: $e');
+      throw FluxLinkApiException('Error resolving link with shortCode: $e');
     }
   }
 

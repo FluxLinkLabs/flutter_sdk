@@ -85,6 +85,10 @@ class _MyAppState extends State<MyApp> {
       print('Title: ${data.title}');
     }
 
+    // Get platform-specific URL
+    final platformUrl = data.getPlatformUrl();
+    print('Platform URL: $platformUrl');
+
     // Navigate to appropriate screen based on link data
     // ...
   }
@@ -108,8 +112,13 @@ class _MyAppState extends State<MyApp> {
 ```dart
 Future<void> handleManualLink(String url) async {
   try {
+    // Get full link data
     final data = await fluxLink.handleLink(url);
     // Process the link data
+
+    // Or get platform-specific URL directly
+    final platformUrl = await fluxLink.handleLinkForCurrentPlatform(url);
+    launchUrl(Uri.parse(platformUrl));
   } catch (e) {
     // Handle error
     print('Error handling link: $e');
@@ -122,9 +131,14 @@ Future<void> handleManualLink(String url) async {
 ```dart
 Future<void> resolveShortCode(String shortCode) async {
   try {
-    final data = await fluxLink.resolveShortCode(shortCode);
+    // Get full link data
+    final data = await fluxLink.resolve(shortCode);
     print('Resolved shortcode to URL: ${data.url}');
     // Process the link data
+
+    // Or get platform-specific URL directly
+    final platformUrl = await fluxLink.resolveForCurrentPlatform(shortCode);
+    launchUrl(Uri.parse(platformUrl));
   } catch (e) {
     // Handle error
     print('Error resolving shortcode: $e');
@@ -157,6 +171,22 @@ Future<void> createNewLink() async {
   }
 }
 ```
+
+## Platform-Specific URLs
+
+The SDK provides several ways to handle platform-specific URLs:
+
+1. **FluxLinkData.getPlatformUrl()** - Returns the appropriate URL for the current platform.
+   If a platform-specific URL is available (androidUrl, iosUrl, or webUrl), it will be returned;
+   otherwise, the default URL is used.
+
+2. **FluxLink.handleLinkForCurrentPlatform(url)** - Resolves a FluxLink URL and directly returns the appropriate
+   platform-specific URL.
+
+3. **FluxLink.resolveForCurrentPlatform(shortCode)** - Resolves a shortcode and directly returns the appropriate
+   platform-specific URL.
+
+These methods simplify the process of handling different URLs for Android, iOS, and web platforms.
 
 ## Additional Information
 
