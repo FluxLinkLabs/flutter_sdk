@@ -22,7 +22,7 @@ class FluxLink {
   /// handling dynamic links.
   static Future<FluxLink> initialize({
     required String apiKey,
-    String baseUrl = 'https://api.fluxlink.com/v1',
+    String baseUrl = 'https://api.fluxlink.com',
   }) async {
     final instance = FluxLink._(apiKey: apiKey, baseUrl: baseUrl);
     await instance._initialize();
