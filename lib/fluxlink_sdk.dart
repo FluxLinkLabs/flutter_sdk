@@ -4,9 +4,13 @@
 /// for handling dynamic links in mobile applications.
 library;
 
+import 'dart:io';
+
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:uuid/uuid.dart';
+
 import 'src/models/flux_link_data.dart';
 import 'src/services/flux_link_api_service.dart';
-import 'src/services/flux_link_detector.dart';
 
 export 'src/models/models.dart';
 export 'src/services/services.dart';
@@ -31,46 +35,102 @@ class FluxLink {
 
   FluxLink._({required String apiKey, required String baseUrl})
     : _apiService = FluxLinkApiService(apiKey: apiKey, baseUrl: baseUrl),
-      _detector = null;
+      _deviceInfo = DeviceInfoPlugin(),
+      _uuid = const Uuid();
 
   final FluxLinkApiService _apiService;
-  FluxLinkDetector? _detector;
+  final DeviceInfoPlugin _deviceInfo;
+  final Uuid _uuid;
+  String? _visitorId;
 
   Future<void> _initialize() async {
-    _detector = FluxLinkDetector(apiService: _apiService);
-    await _detector!.initialize();
+    _visitorId = await _generateVisitorId();
   }
 
-  /// Stream of resolved FluxLink data from automatic link detection.
-  ///
-  /// Listen to this stream to receive notifications when deep links are detected.
-  Stream<FluxLinkData> get onLinkResolved =>
-      _detector?.onLinkResolved ?? Stream<FluxLinkData>.empty();
+  /// Generates a deterministic visitor ID based on device identifiers
+  Future<String> _generateVisitorId() async {
+    try {
+      String? deviceIdentifier;
 
-  /// Manually handle a FluxLink URL.
-  ///
-  /// This resolves a full FluxLink URL (not a shortcode) and returns the associated data.
-  Future<FluxLinkData> handleLink(String url) async {
-    if (_detector == null) {
-      throw StateError('FluxLink not initialized. Call FluxLink.initialize() first.');
+      if (Platform.isIOS) {
+        final iosInfo = await _deviceInfo.iosInfo;
+        // Use identifierForVendor which is unique per vendor per device
+        deviceIdentifier = iosInfo.identifierForVendor;
+      } else if (Platform.isAndroid) {
+        final androidInfo = await _deviceInfo.androidInfo;
+        // Use a combination of androidId and fingerprint for uniqueness
+        deviceIdentifier = '${androidInfo.id}_${androidInfo.fingerprint}';
+      }
+
+      // If we couldn't get a device identifier, generate a random UUID
+      // This UUID will be different for each app installation
+      if (deviceIdentifier == null || deviceIdentifier.isEmpty) {
+        deviceIdentifier = _uuid.v4();
+      }
+
+      // Generate a deterministic UUID using name-based UUID (v5)
+      // We use the DNS namespace and combine it with our device identifier
+      return _uuid.v5(Uuid.NAMESPACE_DNS, 'fluxlink.app:$deviceIdentifier');
+    } catch (e) {
+      // If anything fails, fallback to a random UUID
+      return _uuid.v4();
     }
-    return _detector!.handleLink(url);
   }
 
-  /// Resolves a FluxLink URL and returns the appropriate URL for the current platform.
-  ///
-  /// This is a convenience method that resolves the link and returns the platform-specific URL.
-  Future<String> handleLinkForCurrentPlatform(String url) async {
-    final linkData = await handleLink(url);
-    return linkData.getPlatformUrl();
+  /// Get device platform (ios/android)
+  String get _devicePlatform {
+    if (Platform.isIOS) return 'ios';
+    if (Platform.isAndroid) return 'android';
+    return 'unknown';
+  }
+
+  /// Get device information based on the platform
+  Future<Map<String, String?>> _getDeviceInfo() async {
+    final info = <String, String?>{};
+
+    try {
+      if (Platform.isIOS) {
+        final iosInfo = await _deviceInfo.iosInfo;
+        info['osVersion'] = iosInfo.systemVersion;
+        info['deviceModel'] = iosInfo.model;
+        info['deviceType'] = iosInfo.model.toLowerCase().contains('ipad') ? 'tablet' : 'mobile';
+      } else if (Platform.isAndroid) {
+        final androidInfo = await _deviceInfo.androidInfo;
+        info['osVersion'] = androidInfo.version.release;
+        info['deviceModel'] = androidInfo.model;
+        info['deviceType'] = 'mobile'; // Default to mobile as tablet detection requires UI context
+        info['androidVersion'] = androidInfo.version.release;
+      }
+    } catch (e) {
+      // If we fail to get device info, we'll just return empty map
+      // The API will work with minimal required information
+    }
+
+    return info;
   }
 
   /// Resolves a FluxLink shortcode and returns the associated data.
   ///
   /// This makes a GET request to `/links/resolve/{shortCode}` and returns
   /// the resolved link data.
-  Future<FluxLinkData> resolve(String shortCode) {
-    return _apiService.resolveShortCode(shortCode);
+  Future<FluxLinkData> resolve(String shortCode) async {
+    if (_visitorId == null) {
+      throw StateError('FluxLink not initialized. Call FluxLink.initialize() first.');
+    }
+
+    final deviceInfo = await _getDeviceInfo();
+
+    print('deviceInfo: $deviceInfo');
+
+    return _apiService.resolveShortCode(
+      shortCode,
+      visitorId: _visitorId!,
+      devicePlatform: _devicePlatform,
+      osVersion: deviceInfo['osVersion'],
+      deviceModel: deviceInfo['deviceModel'],
+      deviceType: deviceInfo['deviceType'],
+      androidVersion: deviceInfo['androidVersion'],
+    );
   }
 
   /// Resolves a FluxLink shortcode and returns the appropriate URL for the current platform.
@@ -107,7 +167,6 @@ class FluxLink {
 
   /// Disposes the FluxLink instance when no longer needed.
   void dispose() {
-    _detector?.dispose();
     _apiService.dispose();
   }
 }

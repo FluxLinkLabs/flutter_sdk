@@ -58,11 +58,42 @@ class FluxLinkApiService {
   }
 
   /// Resolves a FluxLink shortcode and returns the associated data
-  Future<FluxLinkData> resolveShortCode(String shortCode) async {
+  ///
+  /// Required parameters:
+  /// - [shortCode]: The FluxLink shortcode to resolve
+  /// - [visitorId]: Unique identifier for the visitor
+  /// - [devicePlatform]: The platform (ios/android)
+  ///
+  /// Optional parameters for better analytics:
+  /// - [osVersion]: OS version (e.g., "16.0" for iOS or "13.0" for Android)
+  /// - [deviceModel]: Device model (e.g., "iPhone 14" or "Pixel 7")
+  /// - [deviceType]: Device type (mobile/tablet)
+  /// - [androidVersion]: Android version as float (e.g., "13.0") - only for Android
+  Future<FluxLinkData> resolveShortCode(
+    String shortCode, {
+    required String visitorId,
+    required String devicePlatform,
+    String? osVersion,
+    String? deviceModel,
+    String? deviceType,
+    String? androidVersion,
+  }) async {
     try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': _apiKey,
+        'x-visitor-id': visitorId,
+        'x-device-platform': devicePlatform.toLowerCase(),
+        if (osVersion != null) 'x-os-version': osVersion,
+        if (deviceModel != null) 'x-device-model': deviceModel,
+        if (deviceType != null) 'x-device-type': deviceType,
+        if (androidVersion != null && devicePlatform.toLowerCase() == 'android')
+          'x-android-version': androidVersion,
+      };
+
       final response = await _httpClient.get(
         Uri.parse('$_baseUrl/links/resolve/$shortCode'),
-        headers: {'Content-Type': 'application/json', 'x-api-key': _apiKey},
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
