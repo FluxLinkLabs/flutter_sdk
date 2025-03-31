@@ -62,7 +62,7 @@ class FluxLinkApiService {
     try {
       final response = await _httpClient.get(
         Uri.parse('$_baseUrl/links/resolve/$shortCode'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_apiKey'},
+        headers: {'Content-Type': 'application/json', 'x-api-key': _apiKey},
       );
 
       if (response.statusCode == 200) {
@@ -113,7 +113,7 @@ class FluxLinkApiService {
 
       final response = await _httpClient.post(
         Uri.parse('$_baseUrl/links'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_apiKey'},
+        headers: {'Content-Type': 'application/json', 'x-api-key': _apiKey},
         body: jsonEncode(body),
       );
 
