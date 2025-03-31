@@ -120,8 +120,6 @@ class FluxLink {
 
     final deviceInfo = await _getDeviceInfo();
 
-    print('deviceInfo: $deviceInfo');
-
     return _apiService.resolveShortCode(
       shortCode,
       visitorId: _visitorId!,
