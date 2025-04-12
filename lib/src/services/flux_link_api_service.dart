@@ -160,6 +160,69 @@ class FluxLinkApiService {
     }
   }
 
+  /// Attempts to claim a deferred deep link based on device fingerprint.
+  /// Returns FluxLinkData if a link is claimed, null otherwise.
+  Future<FluxLinkData?> claimDeferredLink({
+    required String visitorId,
+    required String devicePlatform,
+    required String ipAddress,
+    required String userAgent,
+    String? osVersion,
+    String? deviceModel,
+  }) async {
+    try {
+      final body = {
+        'ip': ipAddress,
+        'userAgent': userAgent,
+        'platform': devicePlatform.toLowerCase(),
+        if (osVersion != null) 'osVersion': osVersion,
+        if (deviceModel != null) 'deviceModel': deviceModel,
+      };
+
+      final headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': _apiKey,
+        'x-visitor-id': visitorId, // Include visitor ID if available/required by API
+      };
+
+      // Note: Using '/v1/links/claim-deferred' as specified in the request.
+      // Adjust if the base URL already includes '/v1' or if the path is different.
+      final response = await _httpClient.post(
+        Uri.parse('$_baseUrl/deferred-links/claim'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        // Assuming the API returns { success: true, data: { ... } } structure for claimed link
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          final data = responseBody['data'] as Map<String, dynamic>;
+          // Assuming the data returned for a claimed link has the same structure
+          // as a resolved or created link, parse it using _parseApiResponse.
+          // Adjust if the structure is different.
+          return _parseApiResponse(data);
+        } else {
+          // Success false or data null likely means no link was found for this fingerprint
+          return null;
+        }
+      } else if (response.statusCode == 404) {
+        // 404 Not Found might explicitly mean no deferred link was found.
+        return null;
+      } else {
+        // Handle other errors
+        throw FluxLinkApiException(
+          'Failed to claim deferred link',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is FluxLinkApiException) rethrow;
+      // Catch potential JSON decoding errors or other issues
+      throw FluxLinkApiException('Error claiming deferred link: $e');
+    }
+  }
+
   /// Disposes the HTTP client when no longer needed
   void dispose() {
     _httpClient.close();
