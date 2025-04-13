@@ -9,6 +9,7 @@ import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -142,6 +143,18 @@ class FluxLink {
     }
   }
 
+  /// Fetches the application package name using package_info_plus.
+  /// This is a required field for deferred link claiming.
+  Future<String?> _getAppPackageName() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      return packageInfo.packageName;
+    } catch (e) {
+      print('FluxLink SDK: Error getting app package name: $e');
+      return null;
+    }
+  }
+
   /// Constructs a basic User Agent string for the API call.
   String _constructUserAgent(Map<String, String?> deviceInfo) {
     final platform = _devicePlatform;
@@ -185,21 +198,25 @@ class FluxLink {
     try {
       final deviceInfo = await _getDeviceInfo();
       final ipAddress = await _getPublicIpAddress();
+      final appPackageName = await _getAppPackageName(); // Retrieve app package name
       final userAgent = _constructUserAgent(deviceInfo);
       final platform = _devicePlatform;
       final osVersion = deviceInfo['osVersion'];
       final deviceModel = deviceInfo['deviceModel'];
 
+      // Check for required information
       if (ipAddress == null) {
         print('FluxLink SDK: Could not retrieve IP address for deferred link check.');
-        // No IP, claim attempt is unlikely to succeed.
-        // Consider if you still want to call the API endpoint without IP.
-        // Depending on API requirements, it might be mandatory.
         return null;
       }
 
+      if (appPackageName == null) {
+        print('FluxLink SDK: Could not retrieve package name for deferred link check.');
+        return null; // Package name is now required
+      }
+
       print(
-        'FluxLink SDK: Claiming deferred link with IP: $ipAddress, UA: $userAgent, Platform: $platform',
+        'FluxLink SDK: Claiming deferred link with IP: $ipAddress, UA: $userAgent, Platform: $platform, App: $appPackageName',
       );
 
       final claimedLinkData = await _apiService.claimDeferredLink(
@@ -207,6 +224,7 @@ class FluxLink {
         devicePlatform: platform,
         ipAddress: ipAddress,
         userAgent: userAgent,
+        appPackageName: appPackageName,
         osVersion: osVersion,
         deviceModel: deviceModel,
       );

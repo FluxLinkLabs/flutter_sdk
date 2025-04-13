@@ -167,6 +167,7 @@ class FluxLinkApiService {
     required String devicePlatform,
     required String ipAddress,
     required String userAgent,
+    required String appPackageName,
     String? osVersion,
     String? deviceModel,
   }) async {
@@ -175,6 +176,7 @@ class FluxLinkApiService {
         'ip': ipAddress,
         'userAgent': userAgent,
         'platform': devicePlatform.toLowerCase(),
+        'appPackageName': appPackageName,
         if (osVersion != null) 'osVersion': osVersion,
         if (deviceModel != null) 'deviceModel': deviceModel,
       };
