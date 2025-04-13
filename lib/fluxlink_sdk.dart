@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -143,6 +144,52 @@ class FluxLink {
     }
   }
 
+  /// Gets the current timezone name (e.g., "America/New_York").
+  /// Returns null if timezone cannot be determined.
+  String? _getTimezone() {
+    try {
+      // Gets the current timezone from the device
+      final now = DateTime.now();
+      final timezone = now.timeZoneName;
+      return timezone;
+    } catch (e) {
+      print('FluxLink SDK: Error getting timezone: $e');
+      return null;
+    }
+  }
+
+  /// Gets the current timezone offset in minutes.
+  /// Returns null if timezone offset cannot be determined.
+  int? _getTimezoneOffset() {
+    try {
+      // Gets the timezone offset in minutes
+      final now = DateTime.now();
+      // Convert from milliseconds to minutes and return the negative
+      // (as per JavaScript standard which is commonly used in APIs)
+      return -now.timeZoneOffset.inMinutes;
+    } catch (e) {
+      print('FluxLink SDK: Error getting timezone offset: $e');
+      return null;
+    }
+  }
+
+  /// Gets the physical screen dimensions in pixels.
+  /// Returns a map with width and height keys.
+  Map<String, int> _getScreenDimensions() {
+    try {
+      // Use PlatformDispatcher instead of deprecated window
+      final flutterView = WidgetsBinding.instance.platformDispatcher.views.first;
+      final physicalSize = flutterView.physicalSize;
+      final width = physicalSize.width.toInt();
+      final height = physicalSize.height.toInt();
+
+      return {'width': width, 'height': height};
+    } catch (e) {
+      print('FluxLink SDK: Error getting screen dimensions: $e');
+      return {'width': 0, 'height': 0};
+    }
+  }
+
   /// Fetches the application package name using package_info_plus.
   /// This is a required field for deferred link claiming.
   Future<String?> _getAppPackageName() async {
@@ -198,11 +245,20 @@ class FluxLink {
     try {
       final deviceInfo = await _getDeviceInfo();
       final ipAddress = await _getPublicIpAddress();
-      final appPackageName = await _getAppPackageName(); // Retrieve app package name
+      final appPackageName = await _getAppPackageName();
       final userAgent = _constructUserAgent(deviceInfo);
       final platform = _devicePlatform;
       final osVersion = deviceInfo['osVersion'];
       final deviceModel = deviceInfo['deviceModel'];
+
+      // Get timezone information
+      final timezone = _getTimezone();
+      final timezoneOffset = _getTimezoneOffset();
+
+      // Get screen dimensions
+      final screenDimensions = _getScreenDimensions();
+      final screenWidth = screenDimensions['width'];
+      final screenHeight = screenDimensions['height'];
 
       // Check for required information
       if (ipAddress == null) {
@@ -216,7 +272,8 @@ class FluxLink {
       }
 
       print(
-        'FluxLink SDK: Claiming deferred link with IP: $ipAddress, UA: $userAgent, Platform: $platform, App: $appPackageName',
+        'FluxLink SDK: Claiming deferred link with IP: $ipAddress, Platform: $platform, '
+        'App: $appPackageName, Timezone: $timezone, Screen: ${screenWidth}x$screenHeight',
       );
 
       final claimedLinkData = await _apiService.claimDeferredLink(
@@ -227,6 +284,10 @@ class FluxLink {
         appPackageName: appPackageName,
         osVersion: osVersion,
         deviceModel: deviceModel,
+        timezone: timezone,
+        timezoneOffset: timezoneOffset,
+        screenWidth: screenWidth,
+        screenHeight: screenHeight,
       );
 
       if (claimedLinkData != null) {

@@ -170,6 +170,10 @@ class FluxLinkApiService {
     required String appPackageName,
     String? osVersion,
     String? deviceModel,
+    String? timezone,
+    int? timezoneOffset,
+    int? screenWidth,
+    int? screenHeight,
   }) async {
     try {
       final body = {
@@ -179,6 +183,10 @@ class FluxLinkApiService {
         'appPackageName': appPackageName,
         if (osVersion != null) 'osVersion': osVersion,
         if (deviceModel != null) 'deviceModel': deviceModel,
+        if (timezone != null) 'timezone': timezone,
+        if (timezoneOffset != null) 'timezoneOffset': timezoneOffset,
+        if (screenWidth != null) 'screenWidth': screenWidth,
+        if (screenHeight != null) 'screenHeight': screenHeight,
       };
 
       final headers = {
